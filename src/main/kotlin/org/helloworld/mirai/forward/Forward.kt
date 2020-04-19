@@ -5,7 +5,11 @@ import net.mamoe.mirai.console.plugins.PluginBase
 import net.mamoe.mirai.console.plugins.withDefaultWriteSave
 import net.mamoe.mirai.contact.nameCardOrNick
 import net.mamoe.mirai.event.subscribeGroupMessages
-import net.mamoe.mirai.message.data.*
+import net.mamoe.mirai.message.data.At
+import net.mamoe.mirai.message.data.MessageChainBuilder
+import net.mamoe.mirai.message.data.QuoteReply
+import net.mamoe.mirai.message.data.toMessage
+import java.net.URL
 
 object Forward : PluginBase() {
     private val config = loadConfig("setting.yml")
@@ -23,6 +27,7 @@ object Forward : PluginBase() {
     }
 
     private var status by config.withDefaultWriteSave { false }
+    private var avatarShow by config.withDefaultWriteSave { true }
 
 
     private fun saveAll() {
@@ -45,6 +50,7 @@ object Forward : PluginBase() {
    stop  关闭转发
    lock <qq> 锁定某成员的转发开关
    forward <qq>  更改成员的转发开关
+   avatar 转发时显示头像开关
             """.trimIndent()
             onCommand { args: List<String> ->
 
@@ -149,18 +155,25 @@ object Forward : PluginBase() {
                     }
                 }
 
-                if (sender.id in disableList){
+                if (sender.id in disableList) {
                     return@always
                 }
 
                 val messageChainBuilder = MessageChainBuilder()
                 var isQuote = false
+                if (avatarShow) {
+                    messageChainBuilder.add(
+                        0,
+                        URL("http://q1.qlogo.cn/g?b=qq&nk=${sender.id}&s=1").uploadAsImage()
+                    )
+                }
+                messageChainBuilder.add("[${sender.nameCardOrNick}]\n".toMessage())
                 for (i in message) {
                     if (i is QuoteReply) {
                         isQuote = true
                         break
                     }
-                    if (i.contentToString() == "/forward"){
+                    if (i.contentToString() == "/forward") {
                         return@always
                     }
                 }
@@ -171,10 +184,11 @@ object Forward : PluginBase() {
                     messageChainBuilder.add(i)
                 }
 
+
                 groups.filter { it != group.id }
                     .forEach {
                         bot.getGroup(it)
-                            .sendMessage("[${sender.nameCardOrNick}]\n".toMessage() + messageChainBuilder.asMessageChain())
+                            .sendMessage(messageChainBuilder.asMessageChain())
                     }
 
             }
