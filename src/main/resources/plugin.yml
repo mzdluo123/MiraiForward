@@ -1,0 +1,6 @@
+name: "Forward"
+author: "HelloWorld"
+version: "0.1.0"
+main: "org.helloworld.mirai.forward.Forward"
+info: ""
+depends: []
