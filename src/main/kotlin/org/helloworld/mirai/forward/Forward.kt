@@ -10,149 +10,42 @@ import net.mamoe.mirai.event.subscribeGroupMessages
 import net.mamoe.mirai.message.data.*
 import java.net.URL
 
-object Forward : PluginBase() {
+internal object Forward : PluginBase() {
     private val config = loadConfig("setting.yml")
-    private val groups by lazy {
+    val groups by lazy {
         config.setIfAbsent("groups", mutableListOf<Long>())
         config.getLongList("groups").toMutableList()
     }
-    private val disableList by lazy {
+    val disableList by lazy {
         config.setIfAbsent("disableList", mutableListOf<Long>())
         config.getLongList("disableList").toMutableList()
     }
-    private val lockList by lazy {
+    val lockList by lazy {
         config.setIfAbsent("lockList", mutableListOf<Long>())
         config.getLongList("lockList").toMutableList()
     }
 
-    private var status by config.withDefaultWriteSave { false }
-    private var avatarShow by config.withDefaultWriteSave { true }
-    private var raw by config.withDefaultWriteSave { true }
+    var status by config.withDefaultWriteSave { false }
+    var avatarShow by config.withDefaultWriteSave { true }
+    var raw by config.withDefaultWriteSave { true }
 
-    private fun saveAll() {
+
+    fun saveAll() {
         config["groups"] = groups
         config["disableList"] = disableList
         config["lockList"] = lockList
-
         config.save()
+        ForwardInfo.saveAll()
     }
 
     override fun onLoad() {
-        registerCommand {
-            name = "forward"
-            description = "设置转发"
-            usage = """qq跨群转发插件
-使用 停止转发 或 启动转发 可设置是否转发你的消息
-使用#raw作为信息开头可以不显示发送者信息进行转发
-/forward
-   group <群号> 将当前群加入/移除转发组
-   start  开启转发
-   stop  关闭转发
-   lock <qq> 锁定某成员的转发开关
-   forward <qq>  更改成员的转发开关
-   avatar 转发时显示头像开关
-   raw  是否允许原消息转发(不显示发送者信息)
-            """.trimIndent()
-            onCommand { args: List<String> ->
-
-                if (args.isEmpty()) {
-                    return@onCommand false
-                }
-
-                when (args[0]) {
-                    "group" -> {
-                        if (args.size < 2) {
-                            return@onCommand false
-                        }
-                        val groupId = args[1].toLong()
-                        if (groupId in groups) {
-                            groups.remove(groupId)
-                            sendMessage("成功删除")
-                        } else {
-                            groups.add(groupId)
-                            sendMessage("成功添加")
-                        }
-                        saveAll()
-                        return@onCommand true
-                    }
-                    "start" -> {
-                        status = true
-                        sendMessage("成功开启")
-                        saveAll()
-                        return@onCommand true
-                    }
-                    "stop" -> {
-                        status = false
-                        sendMessage("成功关闭")
-                        saveAll()
-                        return@onCommand true
-                    }
-                    "lock" -> {
-                        if (args.size < 2) {
-                            return@onCommand false
-                        }
-                        val memberId = args[1].toLong()
-                        if (memberId in lockList) {
-                            lockList.remove(memberId)
-                            sendMessage("成功解除锁定")
-                            saveAll()
-                            return@onCommand true
-                        }
-                        lockList.add(memberId)
-                        sendMessage("成功锁定")
-                        saveAll()
-                        return@onCommand true
-                    }
-                    "forward" -> {
-                        if (args.size < 2) {
-                            return@onCommand false
-                        }
-                        val memberId = args[1].toLong()
-                        if (memberId in disableList) {
-                            disableList.remove(memberId)
-                            sendMessage("成功开启转发")
-                            saveAll()
-                            return@onCommand true
-                        }
-                        disableList.add(memberId)
-                        sendMessage("成功关闭转发")
-                        saveAll()
-                        return@onCommand true
-                    }
-                    "avatar" -> {
-                        if (avatarShow) {
-                            avatarShow = false
-                            sendMessage("成功关闭")
-                            saveAll()
-                            return@onCommand true
-                        }
-                        avatarShow = true
-                        sendMessage("成功开启")
-                        return@onCommand true
-                    }
-                    "raw" -> {
-                        if (raw) {
-                            raw = false
-                            sendMessage("成功关闭")
-                            saveAll()
-                            return@onCommand true
-                        }
-                        raw = true
-                        sendMessage("成功开启")
-                        return@onCommand true
-                    }
-
-                }
-                return@onCommand false
-            }
-        }
+        registerForwardCommand()
+        ForwardInfo.init()
     }
 
     override fun onEnable() {
         super.onEnable()
-
         logger.info("转发插件加载")
-
         subscribeGroupMessages {
             always {
                 if (!status) {
@@ -185,7 +78,8 @@ object Forward : PluginBase() {
                 val messageChainBuilder = MessageChainBuilder()
                 if (raw &&
                     message.contentToString().length > 4 &&
-                    message.contentToString().substring(0, 4) == "#raw") {
+                    message.contentToString().substring(0, 4) == "#raw"
+                ) {
                     message.foreachContent {
                         if (it is PlainText) {
                             messageChainBuilder.add(it.replaceFirst("#raw".toRegex(), ""))
@@ -220,19 +114,24 @@ object Forward : PluginBase() {
                     messageChainBuilder.add(i)
                 }
                 send(group, messageChainBuilder.asMessageChain(), bot)
-
             }
-
         }
     }
 
     private suspend inline fun send(group: Group, messageChain: MessageChain, bot: Bot) {
-        groups.filter { it != group.id }
-            .forEach {
-                bot.getGroup(it)
-                    .sendMessage(messageChain)
+        for ( i in groups.indices){
+            val g = groups[i]
+            if (g == group.id){
+                ForwardInfo.addSend(i)
+                continue
             }
-
+            bot.getGroup(g).sendMessage(messageChain)
+        }
+//        groups.filter { it != group.id }
+//            .forEach {
+//                bot.getGroup(it)
+//                    .sendMessage(messageChain)
+//            }
     }
 
     override fun onDisable() {
