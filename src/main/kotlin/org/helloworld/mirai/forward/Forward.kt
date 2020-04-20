@@ -118,7 +118,17 @@ object Forward : PluginBase() {
                         saveAll()
                         return@onCommand true
                     }
-
+                    "avatar" -> {
+                        if (avatarShow) {
+                            avatarShow = false
+                            sendMessage("成功关闭")
+                            saveAll()
+                            return@onCommand true
+                        }
+                        avatarShow = true
+                        sendMessage("成功开启")
+                        return@onCommand true
+                    }
                 }
                 return@onCommand false
             }
