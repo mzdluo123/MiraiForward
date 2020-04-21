@@ -1,13 +1,14 @@
 package org.helloworld.mirai.forward
 
 import net.mamoe.mirai.Bot
-import net.mamoe.mirai.console.command.registerCommand
 import net.mamoe.mirai.console.plugins.PluginBase
 import net.mamoe.mirai.console.plugins.withDefaultWriteSave
+import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.contact.nameCardOrNick
 import net.mamoe.mirai.event.subscribeGroupMessages
 import net.mamoe.mirai.message.data.*
+import net.mamoe.mirai.message.uploadAsImage
 import java.net.URL
 
 internal object Forward : PluginBase() {
@@ -28,7 +29,7 @@ internal object Forward : PluginBase() {
     var status by config.withDefaultWriteSave { false }
     var avatarShow by config.withDefaultWriteSave { true }
     var raw by config.withDefaultWriteSave { true }
-
+     val avatarCache = mutableMapOf<Long, Image>()
 
     fun saveAll() {
         config["groups"] = groups
@@ -92,10 +93,7 @@ internal object Forward : PluginBase() {
                 }
                 var isQuote = false
                 if (avatarShow) {
-                    messageChainBuilder.add(
-                        0,
-                        URL("http://q1.qlogo.cn/g?b=qq&nk=${sender.id}&s=1").uploadAsImage()
-                    )
+                    messageChainBuilder.add(0, getAvatar(sender.id, group))
                 }
                 messageChainBuilder.add("[${sender.nameCardOrNick}]\n".toMessage())
                 for (i in message) {
@@ -119,9 +117,9 @@ internal object Forward : PluginBase() {
     }
 
     private suspend inline fun send(group: Group, messageChain: MessageChain, bot: Bot) {
-        for ( i in groups.indices){
+        for (i in groups.indices) {
             val g = groups[i]
-            if (g == group.id){
+            if (g == group.id) {
                 ForwardInfo.addSend(i)
                 continue
             }
@@ -132,6 +130,16 @@ internal object Forward : PluginBase() {
 //                bot.getGroup(it)
 //                    .sendMessage(messageChain)
 //            }
+    }
+
+    private suspend inline fun getAvatar(id: Long, contact: Contact): Image {
+        var img = avatarCache[id]
+        if (img != null) {
+            return img
+        }
+        img = URL("http://q1.qlogo.cn/g?b=qq&nk=${id}&s=1").uploadAsImage(contact)
+        avatarCache[id] = img
+        return img
     }
 
     override fun onDisable() {

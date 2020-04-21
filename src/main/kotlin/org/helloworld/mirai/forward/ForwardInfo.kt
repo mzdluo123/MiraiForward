@@ -25,9 +25,10 @@ object ForwardInfo {
         sendList[index]++
     }
 
-    fun delGroup(index: Int){
+    fun delGroup(index: Int) {
         sendList[index] = 0
     }
+
     fun clean() {
         sendList.clear()
         init()
@@ -43,7 +44,7 @@ object ForwardInfo {
         get() = run {
             val sb = StringBuilder()
             sb.append("从${SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss").format(startTime)}开始的统计数据:\n")
-
+            sb.append("缓存了${Forward.avatarCache.size}个头像\n")
             for (i in Forward.groups.indices) {
                 sb.append("群${Forward.groups[i]}发出${sendList[i]}条转发消息\n")
             }

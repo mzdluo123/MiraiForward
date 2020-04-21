@@ -19,6 +19,7 @@ internal fun registerForwardCommand() {
    raw  是否允许原消息转发(不显示发送者信息)
    info 显示统计信息
    clean  清除统计信息
+   refresh  刷新头像缓存
             """.trimIndent()
         onCommand { args: List<String> ->
 
@@ -118,6 +119,11 @@ internal fun registerForwardCommand() {
                 "clean" -> {
                     ForwardInfo.clean()
                     sendMessage("重置成功")
+                    return@onCommand true
+                }
+                "refresh" -> {
+                    Forward.avatarCache.clear()
+                    sendMessage("成功")
                     return@onCommand true
                 }
 
