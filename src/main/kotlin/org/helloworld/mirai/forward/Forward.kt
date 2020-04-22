@@ -6,6 +6,12 @@ import net.mamoe.mirai.console.plugins.withDefaultWriteSave
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.contact.nameCardOrNick
+import net.mamoe.mirai.event.Event
+import net.mamoe.mirai.event.events.MemberJoinEvent
+import net.mamoe.mirai.event.events.MemberLeaveEvent
+import net.mamoe.mirai.event.events.MemberMuteEvent
+import net.mamoe.mirai.event.events.MemberUnmuteEvent
+import net.mamoe.mirai.event.subscribeAlways
 import net.mamoe.mirai.event.subscribeGroupMessages
 import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.message.uploadAsImage
@@ -29,7 +35,8 @@ internal object Forward : PluginBase() {
     var status by config.withDefaultWriteSave { false }
     var avatarShow by config.withDefaultWriteSave { true }
     var raw by config.withDefaultWriteSave { true }
-     val avatarCache = mutableMapOf<Long, Image>()
+    val avatarCache = mutableMapOf<Long, Image>()
+    var showSysMsg by config.withDefaultWriteSave { true }
 
     fun saveAll() {
         config["groups"] = groups
@@ -47,6 +54,37 @@ internal object Forward : PluginBase() {
     override fun onEnable() {
         super.onEnable()
         logger.info("转发插件加载")
+        setupMsgHandle()
+        setupSysMsgHandle()
+    }
+
+    private suspend inline fun send(group: Group, messageChain: MessageChain, bot: Bot) {
+        for (i in groups.indices) {
+            val g = groups[i]
+            if (g == group.id) {
+                ForwardInfo.addSend(i)
+                continue
+            }
+            bot.getGroup(g).sendMessage(messageChain)
+        }
+//        groups.filter { it != group.id }
+//            .forEach {
+//                bot.getGroup(it)
+//                    .sendMessage(messageChain)
+//            }
+    }
+
+    private suspend inline fun getAvatar(id: Long, contact: Contact): Image {
+        var img = avatarCache[id]
+        if (img != null) {
+            return img
+        }
+        img = URL("http://q1.qlogo.cn/g?b=qq&nk=${id}&s=1").uploadAsImage(contact)
+        avatarCache[id] = img
+        return img
+    }
+
+    private fun setupMsgHandle() {
         subscribeGroupMessages {
             always {
                 if (!status) {
@@ -114,33 +152,34 @@ internal object Forward : PluginBase() {
                 send(group, messageChainBuilder.asMessageChain(), bot)
             }
         }
+
     }
 
-    private suspend inline fun send(group: Group, messageChain: MessageChain, bot: Bot) {
-        for (i in groups.indices) {
-            val g = groups[i]
-            if (g == group.id) {
-                ForwardInfo.addSend(i)
-                continue
+
+    private fun setupSysMsgHandle() {
+        subscribeAlways<MemberJoinEvent> {
+            if (group.id in groups && showSysMsg) {
+                send(group, "${member.nameCardOrNick}加入了${group.name}".toMessage().asMessageChain(), bot)
             }
-            bot.getGroup(g).sendMessage(messageChain)
         }
-//        groups.filter { it != group.id }
-//            .forEach {
-//                bot.getGroup(it)
-//                    .sendMessage(messageChain)
-//            }
+
+        subscribeAlways<MemberLeaveEvent> {
+            if (group.id in groups && showSysMsg) {
+                send(group, "${member.nameCardOrNick}退出了${group.name}".toMessage().asMessageChain(), bot)
+            }
+        }
+        subscribeAlways<MemberMuteEvent> {
+            if (group.id in groups && showSysMsg) {
+                send(group, "${member.nameCardOrNick}被禁言了".toMessage().asMessageChain(), bot)
+            }
+        }
+        subscribeAlways<MemberUnmuteEvent> {
+            if (group.id in groups && showSysMsg) {
+                send(group, "${member.nameCardOrNick}可以说话了".toMessage().asMessageChain(), bot)
+            }
+        }
     }
 
-    private suspend inline fun getAvatar(id: Long, contact: Contact): Image {
-        var img = avatarCache[id]
-        if (img != null) {
-            return img
-        }
-        img = URL("http://q1.qlogo.cn/g?b=qq&nk=${id}&s=1").uploadAsImage(contact)
-        avatarCache[id] = img
-        return img
-    }
 
     override fun onDisable() {
         super.onDisable()

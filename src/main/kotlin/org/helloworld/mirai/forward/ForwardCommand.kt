@@ -20,6 +20,7 @@ internal fun registerForwardCommand() {
    info 显示统计信息
    clean  清除统计信息
    refresh  刷新头像缓存
+   sys  是否转发进退群，禁言等系统信息
             """.trimIndent()
         onCommand { args: List<String> ->
 
@@ -90,25 +91,17 @@ internal fun registerForwardCommand() {
                     return@onCommand true
                 }
                 "avatar" -> {
-                    if (Forward.avatarShow) {
-                        Forward.avatarShow = false
-                        sendMessage("成功关闭")
+                    sendMessage(switchState(Forward.avatarShow) {
+                        Forward.avatarShow = it
                         Forward.saveAll()
-                        return@onCommand true
-                    }
-                    Forward.avatarShow = true
-                    sendMessage("成功开启")
+                    })
                     return@onCommand true
                 }
                 "raw" -> {
-                    if (Forward.raw) {
-                        Forward.raw = false
-                        sendMessage("成功关闭")
+                    sendMessage(switchState(Forward.raw) {
+                        Forward.raw = it
                         Forward.saveAll()
-                        return@onCommand true
-                    }
-                    Forward.raw = true
-                    sendMessage("成功开启")
+                    })
                     return@onCommand true
                 }
                 "info" -> {
@@ -126,10 +119,25 @@ internal fun registerForwardCommand() {
                     sendMessage("成功")
                     return@onCommand true
                 }
+                "sys" -> {
+                    sendMessage(switchState(Forward.showSysMsg) {
+                        Forward.showSysMsg = it
+                        Forward.saveAll()
+                    })
+                    return@onCommand true
+                }
 
             }
             return@onCommand false
         }
     }
+}
 
+fun switchState(switch: Boolean, next: (Boolean) -> Unit): String {
+    if (switch) {
+        next(false)
+        return "成功关闭"
+    }
+    next(true)
+    return "成功打开"
 }
