@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.helloworld.mirai"
-version = "0.1.2"
+version = "0.1.3"
 
 repositories {
     maven(url = "https://dl.bintray.com/kotlin/kotlin-eap")
@@ -14,17 +14,17 @@ repositories {
     jcenter()
 }
 
-val miraiCoreVersion = "0.36.1"
+val miraiCoreVersion = "1.0-RC"
 val miraiConsoleVersion = "0.4.9"
 
 dependencies {
     compileOnly(kotlin("stdlib-jdk8"))
-    compileOnly("net.mamoe:mirai-core-jvm:$miraiCoreVersion")
+    compileOnly("net.mamoe:mirai-core:$miraiCoreVersion")
     compileOnly("net.mamoe:mirai-console:$miraiConsoleVersion")
 
     testImplementation(kotlin("stdlib-jdk8"))
-    testImplementation("net.mamoe:mirai-core-jvm:$miraiCoreVersion")
-    testImplementation("net.mamoe:mirai-core-qqandroid-jvm:$miraiCoreVersion")
+    testImplementation("net.mamoe:mirai-core:$miraiCoreVersion")
+    testImplementation("net.mamoe:mirai-core-qqandroid:$miraiCoreVersion")
     testImplementation("net.mamoe:mirai-console:$miraiConsoleVersion")
 }
 

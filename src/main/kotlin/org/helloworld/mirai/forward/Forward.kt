@@ -1,12 +1,12 @@
 package org.helloworld.mirai.forward
 
+import kotlinx.coroutines.launch
 import net.mamoe.mirai.Bot
 import net.mamoe.mirai.console.plugins.PluginBase
 import net.mamoe.mirai.console.plugins.withDefaultWriteSave
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.contact.nameCardOrNick
-import net.mamoe.mirai.event.Event
 import net.mamoe.mirai.event.events.MemberJoinEvent
 import net.mamoe.mirai.event.events.MemberLeaveEvent
 import net.mamoe.mirai.event.events.MemberMuteEvent
@@ -65,7 +65,7 @@ internal object Forward : PluginBase() {
                 ForwardInfo.addSend(i)
                 continue
             }
-            bot.getGroup(g).sendMessage(messageChain)
+            launch { bot.getGroup(g).sendMessage(messageChain) }
         }
 //        groups.filter { it != group.id }
 //            .forEach {
@@ -119,17 +119,17 @@ internal object Forward : PluginBase() {
                     message.contentToString().length > 4 &&
                     message.contentToString().substring(0, 4) == "#raw"
                 ) {
-                    message.foreachContent {
+                    message.forEachContent {
                         if (it is PlainText) {
-                            messageChainBuilder.add(it.replaceFirst("#raw".toRegex(), ""))
-                            return@foreachContent
+                            messageChainBuilder.add(it.content.replaceFirst("#raw".toRegex(), ""))
+                            return@forEachContent
                         }
                         messageChainBuilder.add(it)
                     }
                     send(group, messageChainBuilder.asMessageChain(), bot)
                     return@always
                 }
-                var isQuote = false
+                var isQuote = false  //是否是quote消息
                 if (avatarShow) {
                     messageChainBuilder.add(0, getAvatar(sender.id, group))
                 }
@@ -147,8 +147,12 @@ internal object Forward : PluginBase() {
                     if (isQuote && i is At) {
                         continue
                     }
+                    if (i is QuoteReply){
+
+                    }
                     messageChainBuilder.add(i)
                 }
+
                 send(group, messageChainBuilder.asMessageChain(), bot)
             }
         }
@@ -183,6 +187,7 @@ internal object Forward : PluginBase() {
 
     override fun onDisable() {
         super.onDisable()
+        logger.error("Forward disable")
         saveAll()
     }
 }
